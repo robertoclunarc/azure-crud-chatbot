@@ -24,14 +24,14 @@ app.http('httpapicrudchatbot', {
             if (request.method === 'GET') {
                 // Manejar solicitud GET para obtener mensajes
                 const sender = request.query.get('sender');
-                const messages = await getMessagesForSender(connection, sender);
+                const messages = await queryDB(connection,  sender);
                 context.res = {
                     body: JSON.stringify(messages),
                 };
             } else if (request.method === 'POST') {
                 // Manejar solicitud POST para guardar mensajes
                 const requestData = request.body;
-                const chatId = await saveConversation(connection, requestData);
+                const chatId = await getMessagesForSender(connection, requestData);
                 context.res = {
                     body: { chatId },
                 };
@@ -56,8 +56,30 @@ app.http('httpapicrudchatbot', {
 
 async function getMessagesForSender(connection, sender) {
     // Implementa la lógica para obtener mensajes de la base de datos
-    const result = await connection.query('SELECT a.*, b.* FROM chats a inner join azuredbchatbot.messages b on a.id=b.chat_id WHERE a.sender = ? order by b.id', [sender]);
-    return result;
+    const resultChat = await connection.query('SELECT a.* FROM chats a WHERE a.sender = ? order by a.id', [sender]);
+    console.log(resultChat); 
+    const arrayChats = resultChat.map(async chat => { 
+        const resultMessges = await connection.query('SELECT role, content FROM messages b WHERE b.id_chat = ? order by b.id', [chat.id]);          
+        const chats = {};
+        //chats.id = chat.id;
+        //chats.sender = chat.sender;
+        //chats.object = chat.object;
+        chats.date = chat.date;        
+        chats.conversation_history = resultMessges.map(msg => {
+            const messages = {
+                role: msg.role,
+                content: msg.content,
+            }
+            return messages;
+        });
+        console.log(resultMessges);
+        console.log(chats.conversation_history);
+        
+        return chats;
+    });
+
+    console.log(chats);
+    return arrayChats;
 }
 
 async function saveConversation(connection, requestData) {
@@ -69,4 +91,13 @@ async function saveConversation(connection, requestData) {
     ]);
     const chatId = result[0].insertId;
     return chatId;
+}
+
+async function queryDB(connection, query, fields = undefined) {
+    var result;
+    if (fields !== undefined )
+        result = await connection.query(query, [fields]);
+    else
+        result = await connection.query(query);
+    return result;
 }
