@@ -59,22 +59,34 @@ async function getChatsWithMessages(connection, sender) {
         // Realiza la primera consulta para obtener chats del sender
         const chatsResult = await connection.query('SELECT date, id FROM chats WHERE sender = ?', [sender]);
 
-        const chatsWithMessages = [];
+        var chatsWithMessages = [];
 
-        for (const chat of chatsResult) {
+        for await(const chat of chatsResult) {
             // Realiza la segunda consulta para obtener mensajes basados en el chat_id
             const messagesResult = await connection.query('SELECT role, content FROM messages WHERE chat_id = ?', [chat.id]);
 
             // Agrega el chat con sus mensajes al arreglo
             const chatWithMessages = {
-                conversation_history: chat,
-                messages: messagesResult,
+                date: chat.date,
+                conversation_history: messagesResult,
             };
 
             chatsWithMessages.push(chatWithMessages);
         }
 
-        return chatsWithMessages;
+        const requestBody = {
+            messages: chatsWithMessages,
+            max_tokens: 1000,
+            temperature: 0.5,
+            max_tokens: 1000,
+            temperature: 0.5,
+            frequency_penalty: 0,
+            presence_penalty: 0,
+            top_p: 0.95,
+            stop: null,
+        };
+
+        return requestBody;
     } catch (error) {
         throw error;
     }
