@@ -5,8 +5,6 @@ app.http('httpapicrudchatbot', {
     methods: ['GET', 'POST'],
     authLevel: 'anonymous',
     handler: async (request, context) => {
-        context.log(`Http function processed request for url "${request.url}"`);
-
         //const name = request.query.get('name') || await request.text() || 'world';
         const rutaAlArchivo = './DigiCertGlobalRootCA.crt(1).pem';
         try {            
@@ -24,18 +22,33 @@ app.http('httpapicrudchatbot', {
             if (request.method === 'GET') {
                 // Manejar solicitud GET para obtener mensajes
                 const sender = request.query.get('sender');
+                context.log(request.query.getAll)
                 const messages = await getChatsWithMessages(connection,  sender);
                 context.res = {
                     body: JSON.stringify(messages),
                 };
             } else if (request.method === 'POST') {
-                // Manejar solicitud POST para guardar mensajes
-                const requestData = request.body;
-                const chatId = await saveConversation(connection, requestData);
-                context.res = {
-                    body: { chatId },
-                };
-            } else {
+                    // Manejar solicitud POST para guardar mensajes
+                    try {
+                      const requestData = JSON.parse(await request.text());
+                  
+                      const values = [requestData.date, requestData.sender, requestData.object];
+
+                      const insertToDatabase = await saveConversation(connection, values);
+                  
+                      context.res = {
+                        body: insertToDatabase.insertId
+                      };
+                    } catch (error) {
+                      console.error('Error al procesar la solicitud:', error);
+                      context.res = {
+                        status: 500,
+                        body: 'Error en el servidor'
+                      };
+                    }
+                  }
+                  
+            else {
                 context.res = {
                     status: 405,
                 };
@@ -46,7 +59,7 @@ app.http('httpapicrudchatbot', {
             context.error(`Error en la conexión a la base de datos: ${error.message}`);
             context.res = {
                 status: 500,
-                body: 'Error en la conexión a la base de datos',
+                body: `Error en la conexión a la base de datos: ${error.message}`,
             };
         }
 
@@ -92,16 +105,21 @@ async function getChatsWithMessages(connection, sender) {
     }
 }
 
-async function saveConversation(connection, requestData) {
-    // Implementa la lógica para guardar la conversación en la base de datos
-    const [result] = await connection.execute('INSERT INTO chats (date, sender, object) VALUES (?, ?, ?)', [
-        requestData.date,
-        requestData.sender,
-        JSON.stringify(requestData),
-    ]);
-    const chatId = result[0].insertId;
-    return chatId;
-}
+const saveConversation = (connection, values) => {
+    const insertQuery = 'INSERT INTO chats (date, sender, object) VALUES (?, ?, ?)';
+    return new Promise((resolve, reject) => {
+      connection.query(insertQuery, values, (err, results) => {
+        if (err) {
+          console.error('Error al ejecutar la consulta SQL:', err);
+          reject(err);
+        } else {
+          console.log('Datos insertados con éxito:');
+          resolve(results);
+        }
+      });
+    });
+  };
+  
 
 async function queryDB(connection, query, fields = undefined) {
     var result;
