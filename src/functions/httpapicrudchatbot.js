@@ -34,11 +34,30 @@ app.http('httpapicrudchatbot', {
                   
                       const values = [requestData.date, requestData.sender, requestData.object];
 
-                      const insertToDatabase = await saveConversation(connection, values);
-                  
-                      context.res = {
-                        body: insertToDatabase.insertId
-                      };
+                      let insertToDatabase
+                      const messagesExits = await getChatsWithMessages(connection, requestData.sender)
+                      if(messagesExits.messages.length == 0){
+                        insertToDatabase = await saveChats(connection, values);
+                        const valuesMessages = [insertToDatabase?.insertId,requestData.role, requestData.message ]
+                        const insertMessage = await saveMessage(connection, valuesMessages)
+                        context.res = {
+                            body: {
+                                message:'Guardado satisfactoriamente',
+                                idMessage: insertMessage.insertId
+                            }
+                        }
+                      }else{
+                        const chat_id = await messagesExits.messages[0].conversation_history[0].chat
+                        const valuesMessages = [chat_id,requestData.role, requestData.message ]
+                        const insertMessage = await saveMessage(connection, valuesMessages)
+                        context.res = {
+                            body: {
+                                message:'Guardado satisfactoriamente',
+                                idMessage: insertMessage.insertId
+                            }
+                        }
+                        context.log(messagesExits.messages[0].conversation_history[0].chat)
+                      }
                     } catch (error) {
                       console.error('Error al procesar la solicitud:', error);
                       context.res = {
@@ -76,7 +95,7 @@ async function getChatsWithMessages(connection, sender) {
 
         for await(const chat of chatsResult) {
             // Realiza la segunda consulta para obtener mensajes basados en el chat_id
-            const messagesResult = await connection.query('SELECT role, content FROM messages WHERE chat_id = ?', [chat.id]);
+            const messagesResult = await connection.query('SELECT role, content, chat_id as chat FROM messages WHERE chat_id = ?', [chat.id]);
 
             // Agrega el chat con sus mensajes al arreglo
             const chatWithMessages = {
@@ -105,8 +124,22 @@ async function getChatsWithMessages(connection, sender) {
     }
 }
 
-const saveConversation = (connection, values) => {
+const saveChats = (connection, values) => {
     const insertQuery = 'INSERT INTO chats (date, sender, object) VALUES (?, ?, ?)';
+    return new Promise((resolve, reject) => {
+      connection.query(insertQuery, values, (err, results) => {
+        if (err) {
+          console.error('Error al ejecutar la consulta SQL:', err);
+          reject(err);
+        } else {
+          console.log('Datos insertados con éxito:');
+          resolve(results);
+        }
+      });
+    });
+  };
+  const saveMessage = (connection, values) => {
+    const insertQuery = 'INSERT INTO messages (chat_id, role, content) VALUES (?, ?, ?)';
     return new Promise((resolve, reject) => {
       connection.query(insertQuery, values, (err, results) => {
         if (err) {
