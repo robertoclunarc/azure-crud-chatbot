@@ -22,7 +22,7 @@ app.http('httpapicrudchatbot', {
             if (request.method === 'GET') {
                 // Manejar solicitud GET para obtener mensajes
                 const sender = request.query.get('sender');
-                context.log(request.query.getAll)
+                //context.log(request.query.getAll)
                 const messages = await getChatsWithMessages(connection,  sender);
                 context.res = {
                     body: JSON.stringify(messages),
@@ -34,12 +34,15 @@ app.http('httpapicrudchatbot', {
                   
                       const values = [requestData.date, requestData.sender, requestData.object];
 
-                      let insertToDatabase
-                      const messagesExits = await getChatsWithMessages(connection, requestData.sender)
-                      if(messagesExits.messages.length == 0){
+                      let insertToDatabase;
+                      //const messagesExits = await getChatsWithMessages(connection, requestData.sender)
+                      const messagesExits = await queryDB(connection, 'SELECT * FROM chats WHERE sender = ?', requestData.sender);
+                      
+                      if(messagesExits.length===0){
+                        
                         insertToDatabase = await saveChats(connection, values);
-                        const valuesMessages = [insertToDatabase?.insertId,requestData.role, requestData.message ]
-                        const insertMessage = await saveMessage(connection, valuesMessages)
+                        const valuesMessages = [insertToDatabase?.insertId,requestData.role, requestData.message ];
+                        const insertMessage = await saveMessage(connection, valuesMessages);
                         context.res = {
                             body: {
                                 message:'Guardado satisfactoriamente',
@@ -47,16 +50,19 @@ app.http('httpapicrudchatbot', {
                             }
                         }
                       }else{
-                        const chat_id = await messagesExits.messages[0].conversation_history[0].chat
-                        const valuesMessages = [chat_id,requestData.role, requestData.message ]
-                        const insertMessage = await saveMessage(connection, valuesMessages)
+                        
+                        //const chat_id = await messagesExits.messages[0].conversation_history[0].chat;
+                        const chat_id = await messagesExits[0].id;
+                        const valuesMessages = [chat_id,requestData.role, requestData.message ];
+                        const insertMessage = await saveMessage(connection, valuesMessages);
+                        connection
                         context.res = {
                             body: {
                                 message:'Guardado satisfactoriamente',
                                 idMessage: insertMessage.insertId
                             }
                         }
-                        context.log(messagesExits.messages[0].conversation_history[0].chat)
+                        context.log(messagesExits[0]);
                       }
                     } catch (error) {
                       console.error('Error al procesar la solicitud:', error);
@@ -132,7 +138,7 @@ const saveChats = (connection, values) => {
           console.error('Error al ejecutar la consulta SQL:', err);
           reject(err);
         } else {
-          console.log('Datos insertados con éxito:');
+          console.log('Chats insertados con éxito:');
           resolve(results);
         }
       });
@@ -146,7 +152,7 @@ const saveChats = (connection, values) => {
           console.error('Error al ejecutar la consulta SQL:', err);
           reject(err);
         } else {
-          console.log('Datos insertados con éxito:');
+          console.log('Mensajes insertados con éxito:');
           resolve(results);
         }
       });
@@ -155,10 +161,13 @@ const saveChats = (connection, values) => {
   
 
 async function queryDB(connection, query, fields = undefined) {
-    var result;
-    if (fields !== undefined )
+    let result = [];
+    if (fields !== undefined ){
         result = await connection.query(query, [fields]);
-    else
+    }
+    else{
         result = await connection.query(query);
+    }
+    //return Array.from(result);
     return result;
 }
