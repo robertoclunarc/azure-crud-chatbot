@@ -36,7 +36,7 @@ app.http('httpapicrudchatbot', {
 
                       let insertToDatabase;
                       //const messagesExits = await getChatsWithMessages(connection, requestData.sender)
-                      const messagesExits = await queryDB(connection, 'SELECT * FROM chats WHERE sender = ?', requestData.sender);
+                      const messagesExits = await queryDB(connection, 'SELECT * FROM chats WHERE sender = ? order by id', requestData.sender);
                       
                       if(messagesExits.length===0){
                         
@@ -101,7 +101,7 @@ async function getChatsWithMessages(connection, sender) {
 
         for await(const chat of chatsResult) {
             // Realiza la segunda consulta para obtener mensajes basados en el chat_id
-            const messagesResult = await connection.query('SELECT role, content, chat_id as chat FROM messages WHERE chat_id = ?', [chat.id]);
+            const messagesResult = await connection.query('SELECT role, content FROM messages WHERE chat_id = ?', [chat.id]);
 
             // Agrega el chat con sus mensajes al arreglo
             const chatWithMessages = {
