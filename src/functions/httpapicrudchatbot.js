@@ -39,13 +39,14 @@ app.http('httpapicrudchatbot', {
                       const messagesExits = await queryDB(connection, 'SELECT * FROM chats WHERE sender = ? order by id', requestData.sender);
                       
                       if(messagesExits.length===0){
-                        
+                        context.log(`Mensaje: ${requestData.message}`);
                         insertToDatabase = await saveChats(connection, values);
+                        context.log(insertToDatabase);
                         const valuesMessages = [insertToDatabase?.insertId,requestData.role, requestData.message ];
                         const insertMessage = await saveMessage(connection, valuesMessages);
                         context.res = {
                             body: {
-                                message:'Guardado satisfactoriamente',
+                                message:'Chat y Mensaje Registrado satisfactoriamente',
                                 idMessage: insertMessage.insertId
                             }
                         }
@@ -58,7 +59,7 @@ app.http('httpapicrudchatbot', {
                         connection
                         context.res = {
                             body: {
-                                message:'Guardado satisfactoriamente',
+                                message:'Mensaje Registrado satisfactoriamente',
                                 idMessage: insertMessage.insertId
                             }
                         }
