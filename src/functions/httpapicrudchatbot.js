@@ -95,13 +95,13 @@ app.http('httpapicrudchatbot', {
 async function getChatsWithMessages(connection, sender) {
     try {
         // Realiza la primera consulta para obtener chats del sender
-        const chatsResult = await connection.query('SELECT date, id FROM chats WHERE sender = ?', [sender]);
+        const chatsResult = await connection.query('SELECT date, id FROM chats WHERE sender = ? order by id', [sender]);
 
         var chatsWithMessages = [];
 
         for await(const chat of chatsResult) {
             // Realiza la segunda consulta para obtener mensajes basados en el chat_id
-            const messagesResult = await connection.query('SELECT role, content FROM messages WHERE chat_id = ?', [chat.id]);
+            const messagesResult = await connection.query('SELECT role, content FROM messages WHERE chat_id = ? order by id', [chat.id]);
 
             // Agrega el chat con sus mensajes al arreglo
             const chatWithMessages = {
